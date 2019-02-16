@@ -1,10 +1,9 @@
 import cv2, os
 import numpy as np
 import sys
-from utils import moving_average, plot
+from utils import movingAverage, plot, computeAverage
 import queue
 from sklearn import linear_model
-
 
 class Solver():
 	def __init__(self, config):
@@ -29,7 +28,7 @@ class Solver():
 		self.detect_interval = 1
 		self.temp_preds = np.zeros(int(self.vid.get(cv2.CAP_PROP_FRAME_COUNT)))
 
-		# Construct data table for history of images
+		# Load ground truth txt file
 		with open(self.txtfile, 'r') as file_:
 			gt = file_.readlines()
 			gt = [float(x.strip()) for x in gt]
@@ -41,8 +40,10 @@ class Solver():
 		self.prev_gray = None
 
 	def constructMask(self, mask = None, test=False):
-		"""Constructs a mask to only take into consideration the road """
+		"""Constructs a mask to only take into consideration a part of the frame.
+		In this case it's the road. """
 		vid = self.test_vid if test else self.vid
+		
 		if mask is None:
 			W = int(vid.get(cv2.CAP_PROP_FRAME_WIDTH))
 			H = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -54,8 +55,8 @@ class Solver():
 
 		cv2.rectangle(mask, (0, 0), (W, H), (0, 0, 0), -1)
 
-		x_top_offset = 180
-		x_btm_offset = 35
+		x_top_offset = 240
+		x_btm_offset = 65
 
 		poly_pts = np.array([[[640-x_top_offset, 250], [x_top_offset, 250], [x_btm_offset, 350], [640-x_btm_offset, 350]]], dtype=np.int32)
 		cv2.fillPoly(mask, poly_pts, (255, 255, 255))
@@ -64,7 +65,7 @@ class Solver():
 
 
 	def processFrame(self, frame):
-		""" Gaussian Blur and then apply Lucas Kanade"""
+		""" Gaussian Blur and then apply Lucas Kanade optical flow"""
 		frame = cv2.GaussianBlur(frame, (3,3), 0)
 
 		curr_pts, _st, _err = cv2.calcOpticalFlowPyrLK(self.prev_gray, frame, self.prev_pts, None, **self.lk_params)
@@ -116,7 +117,7 @@ class Solver():
 			# Convert to B/W
 			frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 			frame_gray = frame_gray[130:350, 35:605]
-			# mask_vis = frame.copy() # <- For visualization
+			mask_vis = frame.copy() # <- For visualization
 			
 			# Process each frame
 			if self.prev_pts is None:
@@ -143,40 +144,35 @@ class Solver():
 
 
 		# Split predictions into train and validation - 
-		# split = self.frame_idx//10
-		# train_preds = self.temp_preds[:self.frame_idx-split]
-		# val_preds = self.temp_preds[self.frame_idx - split:self.frame_idx]
-		# gt_train = self.gt[:len(train_preds)]
-		# gt_val = self.gt[len(train_preds):self.frame_idx]
+		split = self.frame_idx//10
+		train_preds = self.temp_preds[:self.frame_idx-split]
+		val_preds = self.temp_preds[self.frame_idx - split:self.frame_idx]
+		gt_train = self.gt[:len(train_preds)]
+		gt_val = self.gt[len(train_preds):self.frame_idx]
 
 		# Fit to ground truth
-		# preds = moving_average(train_preds, self.window)
-		preds = moving_average(self.temp_preds, self.window)
+		preds = moving_average(train_preds, self.window)
+		# preds = moving_average(self.temp_preds, self.window)
 
-		reg = linear_model.LinearRegression(fit_intercept=False)
-		reg.fit(preds.reshape(-1, 1), self.gt) 
-		hf_factor = reg.coef_[0]
+		lin_reg = linear_model.LinearRegression(fit_intercept=False)
+		lin_reg.fit(preds.reshape(-1, 1), gt_train) 
+		hf_factor = lin_reg.coef_[0]
 		print("Estimated hf factor = {}".format(hf_factor))
 
 
-		preds = self.temp_preds * hf_factor
-		preds = moving_average(preds, self.window)
-		mse = np.mean((preds - self.gt)**2)
-		print("MSE for train", mse)
-		
-
 		# estimate training error
-		# pred_speed_train = train_preds * hf_factor
-		# pred_speed_train = moving_average(pred_speed_train, self.window)
-		# mse = np.mean((pred_speed_train - gt_train)**2)
+		pred_speed_train = train_preds * hf_factor
+		pred_speed_train = moving_average(pred_speed_train, self.window)
+		mse = np.mean((pred_speed_train - gt_train)**2)
+		print("MSE for train", mse)
 
-		# Estiamte validation error
-		# pred_speed_val = val_preds * hf_factor
-		# pred_speed_val = moving_average(pred_speed_val, self.window)
-		# mse = np.mean((pred_speed_val - gt_val)**2)
-		# print("MSE for val", mse)
+		# Estimate validation error
+		pred_speed_val = val_preds * hf_factor
+		pred_speed_val = moving_average(pred_speed_val, self.window)
+		mse = np.mean((pred_speed_val - gt_val)**2)
+		print("MSE for val", mse)
 		
-		# plot(pred_speed_val, gt_val)
+		plot(pred_speed_val, gt_val)
 
 		return hf_factor
 
@@ -190,6 +186,7 @@ class Solver():
 		key_pts = self.getKeyPts(35, 130)
 		cv2.drawKeypoints(frame_vis, key_pts, frame_vis, color=(0,0,255))
 		cv2.drawKeypoints(frame_vis, prev_key_pts, frame_vis, color=(0,255,0))
+
 		if speed is not None:
 			font = cv2.FONT_HERSHEY_DUPLEX
 			cv2.putText(frame_vis, "speed {}".format(speed), (10, 35), font, 1.2, (0, 0, 255))
@@ -197,7 +194,7 @@ class Solver():
 		cv2.imshow('test',frame_vis)
 		return key_pts
 
-	def test(self, hf_factor):
+	def test(self, hf_factor, save_txt=False):
 		mask = self.constructMask(test=True)
 		
 		self.prev_gray = None
@@ -205,8 +202,8 @@ class Solver():
 		frame_idx = 0
 		curr_estimate = 0
 		prev_key_pts = None
-		q = queue.Queue(maxsize=self.window//2)
-		q.put(0)
+		
+		
 		while self.test_vid.isOpened() and frame_idx<len(self.gt):
 			ret, frame = self.test_vid.read()
 			if not ret:
@@ -227,32 +224,26 @@ class Solver():
 				# Get median of predicted V/hf values
 				preds = self.processFrame(frame_gray)
 				pred_speed = np.median(preds) * hf_factor if len(preds) else 0
-				
-				# Moving average
-				if q.full():
-					temp = q.get()
-				q.put(pred_speed)
-				pred_speed = np.mean(np.array(list(q.queue)))
-				test_preds[frame_idx] =  pred_speed # m/s -> mph
+				test_preds[frame_idx] =  pred_speed
 
 			# Extract features
-			# print(frame_idx, frame_gray.shape, mask.shape)
 			self.prev_pts = self.getFeatures(frame_gray, mask[130:350, 35:605])
 			self.prev_gray = frame_gray
 			frame_idx += 1
 			
 			# For visualization purposes only
-			if self.vis:
-				prev_key_pts = self.visualize(frame, mask_vis, prev_key_pts, speed=pred_speed)
-				if cv2.waitKey(25) & 0xFF == ord('q'):
-					break
+			vis_pred_speed = computeAverage(test_preds, self.window//2, frame_idx)
+			prev_key_pts = self.visualize(frame, mask_vis, prev_key_pts, speed=vis_pred_speed)
+			if cv2.waitKey(1) & 0xFF == ord('q'):
+				break
 		
 		self.test_vid.release()
 		cv2.destroyAllWindows()
 		
-		with open("test.txt", "w") as file_:
-			for item in test_preds:
-				file_.write("%s \n" % item)
+		if save_txt:
+			with open("test.txt", "w") as file_:
+				for item in test_preds:
+					file_.write("%s \n" % item)
 
 
 

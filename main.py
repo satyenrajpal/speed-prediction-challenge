@@ -4,14 +4,15 @@ from solver import Solver
 import argparse
 """ 
 TODO:
- - write eval function - Done
- - test function to spit out test.txt 
- - Add comments to the code - Done
+ - 
 """
+def str2bool(v):
+    return v.lower() in ('true')
+
 def main(config):
     solver = Solver(config)
     hf_factor = solver.run()
-    # solver.test(hf_factor)
+    solver.test(hf_factor, config.save_txt)
 
 
 if __name__=='__main__':
@@ -23,6 +24,7 @@ if __name__=='__main__':
     parser.add_argument('--txtfile', type=str, default='data/train.txt', help='txt file path')
     parser.add_argument('--vis', type=int, default=0)
     parser.add_argument('--len_gt', type=int, default=20000, help='length of the ground truth labels')
+    parser.add_argument('--save_txt', type=str2bool, default=False, help='Toggle whether to save test predictions in a txt file')
     config = parser.parse_args()
 
     main(config)

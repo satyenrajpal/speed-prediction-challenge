@@ -35,7 +35,6 @@ class Solver():
 		
 		self.gt = np.array(gt[:self.len_gt])
 
-		self.median = []
 		self.window = 80 # for moving average
 		self.prev_gray = None
 
@@ -136,15 +135,13 @@ class Solver():
 			self.frame_idx += 1
 			
 			# For visualization purposes only
-			if self.vis and self.frame_idx<1000 and self.frame_idx>500:
+			if self.vis:
 				prev_key_pts = self.visualize(frame, mask_vis, prev_key_pts)
 				if cv2.waitKey(1) & 0xFF == ord('q'):
 					break
 
-		self.video.release()
+		# self.video.release()
 		self.vid.release()
-		cv2.destroyAllWindows()
-
 
 		# Split predictions into train and validation - 
 		split = self.frame_idx//10
@@ -174,7 +171,7 @@ class Solver():
 		mse = np.mean((pred_speed_val - gt_val)**2)
 		print("MSE for val", mse)
 		
-		plot(pred_speed_train, gt_train)
+		# plot(pred_speed_train, gt_train)
 		# plot(pred_speed_val, gt_val)
 
 		return hf_factor
@@ -206,6 +203,7 @@ class Solver():
 		frame_idx = 0
 		curr_estimate = 0
 		prev_key_pts = None
+		self.prev_pts = None
 		
 		while self.test_vid.isOpened():
 			ret, frame = self.test_vid.read()
@@ -239,10 +237,10 @@ class Solver():
 			prev_key_pts = self.visualize(frame, mask_vis, prev_key_pts, speed=vis_pred_speed)
 			if cv2.waitKey(1) & 0xFF == ord('q'):
 				break
-		
+
 		self.test_vid.release()
-		cv2.destroyAllWindows()
 		
+		print("Saving predicted speeds in test.txt ")
 		if save_txt:
 			with open("test.txt", "w") as file_:
 				for item in test_preds:

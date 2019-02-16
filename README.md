@@ -12,7 +12,7 @@ Train_graph | Validation Graph
 ![Train Graph](/train_graph.png) | ![Validation Graph](/validation_graph.png)
 
 Key points are tracked using a mask as shown in the sample gif. Rotation of camera is not considered.
-![Car View](/car_gif.gif)
+![Car View](/car_view.gif)
 
 Referred to this [blog post](https://nicolovaligi.com/car-speed-estimation-windshield-camera.html) for some guidance 
 

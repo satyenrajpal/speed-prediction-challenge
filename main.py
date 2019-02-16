@@ -12,7 +12,7 @@ def str2bool(v):
 def main(config):
     solver = Solver(config)
     hf_factor = solver.run()
-    solver.test(hf_factor, config.save_txt)
+    # solver.test(hf_factor, config.save_txt)
 
 
 if __name__=='__main__':

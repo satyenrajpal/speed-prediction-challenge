@@ -151,8 +151,7 @@ class Solver():
 		gt_val = self.gt[len(train_preds):self.frame_idx]
 
 		# Fit to ground truth
-		preds = moving_average(train_preds, self.window)
-		# preds = moving_average(self.temp_preds, self.window)
+		preds = movingAverage(train_preds, self.window)
 
 		lin_reg = linear_model.LinearRegression(fit_intercept=False)
 		lin_reg.fit(preds.reshape(-1, 1), gt_train) 
@@ -162,17 +161,18 @@ class Solver():
 
 		# estimate training error
 		pred_speed_train = train_preds * hf_factor
-		pred_speed_train = moving_average(pred_speed_train, self.window)
+		pred_speed_train = movingAverage(pred_speed_train, self.window)
 		mse = np.mean((pred_speed_train - gt_train)**2)
 		print("MSE for train", mse)
 
 		# Estimate validation error
 		pred_speed_val = val_preds * hf_factor
-		pred_speed_val = moving_average(pred_speed_val, self.window)
+		pred_speed_val = movingAverage(pred_speed_val, self.window)
 		mse = np.mean((pred_speed_val - gt_val)**2)
 		print("MSE for val", mse)
 		
-		plot(pred_speed_val, gt_val)
+		plot(pred_speed_train, gt_train)
+		# plot(pred_speed_val, gt_val)
 
 		return hf_factor
 
@@ -203,8 +203,7 @@ class Solver():
 		curr_estimate = 0
 		prev_key_pts = None
 		
-		
-		while self.test_vid.isOpened() and frame_idx<len(self.gt):
+		while self.test_vid.isOpened():
 			ret, frame = self.test_vid.read()
 			if not ret:
 				break

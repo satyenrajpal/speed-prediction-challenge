@@ -13,4 +13,4 @@ Train_graph | Validation Graph
 ## TODO:
  - [x] - Compute MSE for both train and val
  - [x] - Graph for both train and validation
- - Video showing key points
+ - [ ] - Video showing key points

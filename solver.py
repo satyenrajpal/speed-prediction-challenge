@@ -109,6 +109,9 @@ class Solver():
 		mask = self.constructMask()
 		prev_key_pts = None
 
+		# fourcc = cv2.VideoWriter_fourcc(*'XVID')
+		# self.video = cv2.VideoWriter('video.avi', fourcc,29, (int(self.vid.get(cv2.CAP_PROP_FRAME_WIDTH)), int(self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT))))
+		
 		while self.vid.isOpened() and self.frame_idx<len(self.gt):
 			ret, frame = self.vid.read()
 			if not ret:
@@ -133,12 +136,12 @@ class Solver():
 			self.frame_idx += 1
 			
 			# For visualization purposes only
-			if self.vis:
+			if self.vis and self.frame_idx<1000 and self.frame_idx>500:
 				prev_key_pts = self.visualize(frame, mask_vis, prev_key_pts)
 				if cv2.waitKey(1) & 0xFF == ord('q'):
 					break
 
-
+		self.video.release()
 		self.vid.release()
 		cv2.destroyAllWindows()
 
@@ -190,8 +193,9 @@ class Solver():
 		if speed is not None:
 			font = cv2.FONT_HERSHEY_DUPLEX
 			cv2.putText(frame_vis, "speed {}".format(speed), (10, 35), font, 1.2, (0, 0, 255))
-		
 		cv2.imshow('test',frame_vis)
+		# self.video.write(frame_vis)
+
 		return key_pts
 
 	def test(self, hf_factor, save_txt=False):

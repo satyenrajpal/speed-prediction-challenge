@@ -11,7 +11,7 @@ TODO:
 def main(config):
     solver = Solver(config)
     hf_factor = solver.run()
-    solver.test(hf_factor)
+    # solver.test(hf_factor)
 
 
 if __name__=='__main__':

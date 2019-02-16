@@ -5,12 +5,12 @@ from matplotlib.lines import Line2D
 import matplotlib.ticker as ticker
 
 
-def moving_average(x, w):
+def moving_average(x, window):
   ret = np.zeros_like(x)
 
   for i in range(x.shape[0]):
-    idx1 = max(0, i - (w - 1) // 2)
-    idx2 = min(x.shape[0], i + (w - 1) // 2 + (2 - (w % 2)))
+    idx1 = max(0, i - (window - 1) // 2)
+    idx2 = min(x.shape[0], i + (window - 1) // 2 + (2 - (window % 2)))
 
     ret[i] = np.mean(x[idx1:idx2])
 

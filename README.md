@@ -14,7 +14,7 @@ Train_graph | Validation Graph
 Key points are tracked using a mask as shown in the sample gif. Rotation of camera is not considered.
 ![Car View](/car_view.gif)
 
-Referred to this [blog post](https://nicolovaligi.com/car-speed-estimation-windshield-camera.html) for some guidance 
+Referred to this [blog post](https://nicolovaligi.com/car-speed-estimation-windshield-camera.html) for some guidance and [this implementation](https://github.com/quillford/speedchallenge) for hyperparameters. 
 
 ## TODO:
  - [x] - Compute MSE for both train and val
